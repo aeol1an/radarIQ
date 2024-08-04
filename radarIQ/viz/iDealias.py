@@ -1,0 +1,21 @@
+from iPyart import iPyart
+from ..proc.splashDealias import splashDealias
+import pyart
+import netCDF4
+
+def iDealias(filename):
+    dealias_correction_var = {
+        "name": "dealias_correction",
+        "fields": {
+            "type": "i2",
+            "fill_value": 0,
+            "dims": ("time", "range"),
+            "long_name": "velocity_dealias_correction_offset",
+            "units": "2x nyqist velocity m/s",
+            "grid_mapping": "grid_mapping",
+            "coordinates": "time range",
+            "data": "tbd"
+        },
+    }
+
+    
