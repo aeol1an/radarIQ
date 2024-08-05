@@ -3,8 +3,8 @@ from ..proc.splashDealias import splashDealias
 import pyart
 import netCDF4
 
-def iDealias(filename):
-    dealias_correction_var = {
+def iDealias(cfradDir, startFilenum):
+    dealiasCorrectionVar = {
         "name": "dealias_correction",
         "fields": {
             "type": "i2",
@@ -18,4 +18,5 @@ def iDealias(filename):
         },
     }
 
+    editHistory = []
     

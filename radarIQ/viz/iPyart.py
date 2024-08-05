@@ -43,7 +43,11 @@ class iPyart:
         self.curFileNum = startFilenum
         self.curFileName = self.files[self.curFileNum].name
         self.currentRadarObj = pyart.io.read(self.files[self.curFileNum])
+
         self.singleFileMode = False
+        self.singleFieldMode = False
+        self.customTitle = False
+        self.customSubTitle = False
 
         self.customPlots = []
         self.handlers = []
@@ -94,7 +98,12 @@ class iPyart:
         self.radarDisplay.set_limits(xlim=current_xlims, ylim=current_ylims)
         self.radarDisplay.plot_ppi(self.currentField, norm=norm, cmap=cmap)
 
+        if isinstance(self.customTitle, str):
+            plt.title(self.customTitle)
+
     def _fieldSwitchManager(self, event):
+        if self.singleFieldMode:
+            return
         allowedKeys = ['z', 'v', 'd', 'r']
         if not (event.key in allowedKeys):
             return
@@ -135,20 +144,29 @@ class iPyart:
         self.radarDisplay.set_limits(xlim=current_xlims, ylim=current_ylims)
         self.radarDisplay.plot_ppi(field, norm=norm, cmap=cmap)
         
+        if isinstance(self.customTitle, str):
+            plt.title(self.customTitle)
 
-    def open(self):
+    def open(self, initFieldName = 'DBZ'):
         if self.isShowing:
             raise RuntimeError("Plot is already showing.")
+        validInitFields = ['DBZ', 'VEL', 'ZDR', 'RHOHV']
+        if not (initFieldName in validInitFields):
+            raise ValueError(f"Initfield '{initField}' is not valid. Choose from 'DBZ', 'VEL', 'ZDR', or 'RHOHV'")
+        
+        plt.rcParams['keymap.home'].remove('r')
+        plt.rcParams['keymap.back'].remove('c')
+        plt.rcParams['keymap.forward'].remove('v')
 
         self.fig = plt.figure(figsize = [10,8])
         self.identifier = self.fig.number
-        self.currentField = 'DBZ'
+        self.currentField = initFieldName
 
-        initField = getPlottableFields(self.currentRadarObj.get_nyquist_vel(0))['DBZ']
+        initField = getPlottableFields(self.currentRadarObj.get_nyquist_vel(0))[initFieldName]
         norm = initField['norm']
         cmap = initField['cmap']
         self.radarDisplay = pyart.graph.RadarDisplay(self.currentRadarObj)
-        self.radarDisplay.plot_ppi('DBZ', norm=norm, cmap=cmap)
+        self.radarDisplay.plot_ppi(initFieldName, norm=norm, cmap=cmap)
         self.isShowing = True
 
         manager = plt.get_current_fig_manager()
@@ -158,19 +176,38 @@ class iPyart:
 
         self.fig.canvas.mpl_connect('key_press_event', self._fieldSwitchManager)
         self.fig.canvas.mpl_connect('key_press_event', self._timeSwitchManager)
+        self.fig.canvas.mpl_connect('close_event', self._on_close)
 
         for action, handler in self.handlers:
             self.fig.canvas.mpl_connect(action, handler)
 
+        if isinstance(self.customTitle, str):
+            plt.title(self.customTitle)
+
         plt.show(block=True)
 
+    def _on_close(self, event=None):
+        plt.rcParams['keymap.home'].append('r')
+        plt.rcParams['keymap.back'].append('c')
+        plt.rcParams['keymap.forward'].append('v')
 
-    def close(self):
+        self.isShowing = False
+        self.fig = None
+        self.identifier = None
+        self.currentField = None
+        self.radarDisplay = None
+
+    def close(self, event=None):
         if not self.isShowing:
             raise RuntimeError("Plot must be showing before it can be closed.")
         
         plt.figure(self.identifier)
         plt.close()
+
+        plt.rcParams['keymap.home'].append('r')
+        plt.rcParams['keymap.back'].append('c')
+        plt.rcParams['keymap.forward'].append('v')
+
         self.isShowing = False
         self.fig = None
         self.identifier = None
