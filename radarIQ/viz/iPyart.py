@@ -32,6 +32,20 @@ def getPlottableFields(nyquistVel: float, negDealias: int = 0, posDealias: int =
 
     return fields
 
+def disableKeyboardShortcuts():
+    plt.rcParams['keymap.home'].remove('r')
+    plt.rcParams['keymap.back'].remove('c')
+    plt.rcParams['keymap.back'].remove('left')
+    plt.rcParams['keymap.forward'].remove('v')
+    plt.rcParams['keymap.forward'].append('remove')
+
+def enableKeyboardShortcuts():
+    plt.rcParams['keymap.home'].append('r')
+    plt.rcParams['keymap.back'].append('c')
+    plt.rcParams['keymap.back'].append('left')
+    plt.rcParams['keymap.forward'].append('v')
+    plt.rcParams['keymap.forward'].append('right')
+
 class iPyart:
     def __init__(self, cfradDir, startFilenum):
         if matplotlib.get_backend() != 'TkAgg':
@@ -98,7 +112,7 @@ class iPyart:
         self.radarDisplay.plot_ppi(self.currentField, norm=norm, cmap=cmap)
 
         if isinstance(self.customTitle, str):
-            plt.title(self.customTitle)
+            plt.suptitle(self.customTitle)
 
     def _fieldSwitchManager(self, event):
         if self.singleFieldMode:
@@ -144,7 +158,7 @@ class iPyart:
         self.radarDisplay.plot_ppi(field, norm=norm, cmap=cmap)
         
         if isinstance(self.customTitle, str):
-            plt.title(self.customTitle)
+            plt.suptitle(self.customTitle)
 
     def open(self, initFieldName = 'DBZ'):
         if self.isShowing:
@@ -153,9 +167,7 @@ class iPyart:
         if not (initFieldName in validInitFields):
             raise ValueError(f"Initfield '{initField}' is not valid. Choose from 'DBZ', 'VEL', 'ZDR', or 'RHOHV'")
         
-        plt.rcParams['keymap.home'].remove('r')
-        plt.rcParams['keymap.back'].remove('c')
-        plt.rcParams['keymap.forward'].remove('v')
+        disableKeyboardShortcuts()
 
         self.fig = plt.figure(figsize = [10,8])
         self.identifier = self.fig.number
@@ -181,14 +193,12 @@ class iPyart:
             self.fig.canvas.mpl_connect(action, handler)
 
         if isinstance(self.customTitle, str):
-            plt.title(self.customTitle)
+            plt.suptitle(self.customTitle)
 
         plt.show(block=True)
 
     def _on_close(self, event=None):
-        plt.rcParams['keymap.home'].append('r')
-        plt.rcParams['keymap.back'].append('c')
-        plt.rcParams['keymap.forward'].append('v')
+        enableKeyboardShortcuts()
 
         self.isShowing = False
         self.fig = None
@@ -196,23 +206,12 @@ class iPyart:
         self.currentField = None
         self.radarDisplay = None
 
-    def close(self, event=None):
+    def close(self):
         if not self.isShowing:
             raise RuntimeError("Plot must be showing before it can be closed.")
         
         plt.figure(self.identifier)
         plt.close()
-
-        plt.rcParams['keymap.home'].append('r')
-        plt.rcParams['keymap.back'].append('c')
-        plt.rcParams['keymap.forward'].append('v')
-
-        self.isShowing = False
-        self.fig = None
-        self.identifier = None
-        self.currentField = None
-        self.radarDisplay = None
-
 
     def plot(self, arguments, replotting: bool = False):
         if not self.isShowing:
@@ -262,6 +261,11 @@ class iPyart:
 
     def setCustomTitle(self, title: str):
         self.customTitle = title
+        if self.isShowing:
+            plt.figure(self.identifier)
+            plt.suptitle(self.customTitle)
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
 
     def unsetCustomTitle(self):
         self.customTitle = False
