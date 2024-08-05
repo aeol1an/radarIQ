@@ -47,7 +47,6 @@ class iPyart:
         self.singleFileMode = False
         self.singleFieldMode = False
         self.customTitle = False
-        self.customSubTitle = False
 
         self.customPlots = []
         self.handlers = []
@@ -243,10 +242,29 @@ class iPyart:
         if not replotting:
             self.customPlots.append(arguments)
 
+    def addCustomHandler(self, action: str, handler):
+        self.handlers.append((action, handler))
+
+    def freezeTime(self):
+        self.singleFileMode = True
+
+    def unfreezeTime(self):
+        self.singleFileMode = False
+
+    def getCurrentField(self):
+        return self.currentField
+    
+    def freezeField(self):
+        self.singleFieldMode = True
+
+    def unfreezeField(self):
+        self.singleFieldMode = False
+
+    def setCustomTitle(self, title: str):
+        self.customTitle = title
+
+    def unsetCustomTitle(self):
+        self.customTitle = False
 
     def getFileNum(self):
         return self.curFileNum
-    
-    
-    def addCustomHandler(self, action: str, handler):
-        self.handlers.append((action, handler))

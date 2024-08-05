@@ -1,5 +1,5 @@
 from iPyart import iPyart
-from ..proc.splashDealias import splashDealias
+from ..proc import splashDealias
 import pyart
 import netCDF4
 
