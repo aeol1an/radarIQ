@@ -19,12 +19,12 @@ def getPlottableFields(nyquistVel: float, negDealias: int = 0, posDealias: int =
             'norm': TwoSlopeNorm(vmin=-nyquistVel - 2*negDealias*nyquistVel, vcenter=0, vmax=nyquistVel + 2*posDealias*nyquistVel)
         },
         'ZDR': {
-            'cmap': cmaps.dmap(256),
+            'cmap': 'pyart_Carbone42',
             'title': 'Differential Reflectivity',
             'norm': Normalize(vmin=-5, vmax=8)
         },
         'RHOHV': {
-            'cmap': cmaps.rmap(256),
+            'cmap': 'pyart_Carbone42',
             'title': 'Correlation Coefficient',
             'norm': Normalize(vmin=0.1, vmax=1.05)
         } 
@@ -37,7 +37,7 @@ def disableKeyboardShortcuts():
     plt.rcParams['keymap.back'].remove('c')
     plt.rcParams['keymap.back'].remove('left')
     plt.rcParams['keymap.forward'].remove('v')
-    plt.rcParams['keymap.forward'].append('remove')
+    plt.rcParams['keymap.forward'].remove('right')
 
 def enableKeyboardShortcuts():
     plt.rcParams['keymap.home'].append('r')
