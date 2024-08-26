@@ -1,6 +1,8 @@
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.path as mplPath
+import time
 
 LEFT = 1
 RIGHT = 3
@@ -53,23 +55,38 @@ def bound(val, upper, lower):
         return lower
     return val
 
-def dealiasOnce(fields):
+def dealiasOnce(fields, currentUnfolds):
+    if matplotlib.get_backend() != 'TkAgg':
+        raise RuntimeError("Cannot run interactive display with current backend. "
+                            "Switch to Tkagg with 'matplotlib.use(backend=\"TkAgg\")' "
+                            "or if using jupyter, '%matplotlib tk.'")
+
     field = fields[0]
     ny, nx = field.shape
     
+    dnx = nx // (currentUnfolds[0] + currentUnfolds[1] + 1)
+
     xx, yy = np.meshgrid(range(nx), range(ny))
     
+    plt.rcParams['keymap.back'].remove('left')
+    plt.rcParams['keymap.forward'].remove('right')
+    
     fig = plt.figure(figsize=[8, 6])
-    plt.pcolormesh(xx, yy, field)
+    plt.pcolormesh(xx, yy, field, cmap='pyart_Carbone42')
+    plt.title("Make selection by double clicking. Double right click to close polygon.")
+    plt.xlim([-0.1*nx, nx+0.1*nx])
+    plt.ylim([-0.1*ny, ny+0.1*ny])
     
     selectionDone = False
     points = []
     selectionResult = np.array([])
+    path = None
     
     def addPoint(event):
         nonlocal selectionDone
         nonlocal points
         nonlocal selectionResult
+        nonlocal path
         
         if (not event.dblclick) or (event.button != LEFT and event.button != RIGHT):
             return
@@ -105,6 +122,9 @@ def dealiasOnce(fields):
 
         #if made a circle or first and last set done to true
         if samePoint(points[0], points[-1]) and (len(points) >= 3):
+            plt.title("Press left or right arrow key to execute unfold.")
+            event.canvas.draw()
+            event.canvas.flush_events()
             selectionDone = True
         
         #if done is true, calculate numpy boolean array with things to move over after selecting side of line
@@ -126,41 +146,67 @@ def dealiasOnce(fields):
     
     unfoldDone = False
     unfoldDirection = ""
-    unfoldsAdded = np.array([0,0])
-    
+    spaceAllocated = False
+    currentUnfoldCount = np.array(currentUnfolds)
+    unfoldedSelectionResult = np.array([])
+    foldedSelectionResult = np.array([])
     def performUnfold(event):
         nonlocal unfoldDone
         nonlocal unfoldDirection
-        nonlocal unfoldsAdded
+        nonlocal spaceAllocated
+        nonlocal currentUnfoldCount
+        nonlocal unfoldedSelectionResult
+        nonlocal foldedSelectionResult
         
         if not selectionDone:
             return
         if not (event.key in ['left', 'right', 'enter']):
             return
         
-        if event.key == 'enter':
+        if unfoldDone and (event.key == 'enter'):
             plt.close()
             return
         
         if unfoldDone:
             return
-        isoSelection = np.array(field)
-        isoSelection[~selectionResult] = np.nan
-        fieldNan = np.array(field)
-        fieldNan[selectionResult] = np.nan
         
+        #execute unfolding on selectionResult
         if event.key == 'left':
             unfoldDirection = 'left'
-            unfoldsAdded += np.array([1,0])
-            newField = np.concatenate((isoSelection, fieldNan), axis=1)
+            currentUnfoldCount += np.array([1,0])
+            unfoldedSelectionResult = np.concatenate((selectionResult, np.full((ny, dnx), False, dtype=bool)), axis=1)
+            foldedSelectionResult = np.concatenate((np.full((ny, dnx), False, dtype=bool), selectionResult), axis=1)
+            
+            if np.all(~unfoldedSelectionResult[:,0:dnx]):
+                unfoldedSelectionResult = unfoldedSelectionResult[:, dnx:]
+                foldedSelectionResult = foldedSelectionResult[:,dnx:]
+                newField = np.array(field)
+            else:
+                newField = np.concatenate((np.full((ny, dnx), np.nan), field), axis=1)
+                spaceAllocated = True
+            
         elif event.key == 'right':
             unfoldDirection = 'right'
-            unfoldsAdded += np.array([0,1])
-            newField = np.concatenate((fieldNan, isoSelection), axis=1)
+            currentUnfoldCount += np.array([0,1])
+            unfoldedSelectionResult = np.concatenate((np.full((ny, dnx), False, dtype=bool), selectionResult), axis=1)
+            foldedSelectionResult = np.concatenate((selectionResult, np.full((ny, dnx), False, dtype=bool)), axis=1)
+            
+            if np.all(~unfoldedSelectionResult[:, -dnx:]):
+                unfoldedSelectionResult = unfoldedSelectionResult[:, 0:dnx]
+                foldedSelectionResult = foldedSelectionResult[:, 0:dnx]
+                newField = np.array(field)
+            else:
+                newField = np.concatenate((field, np.full((ny, dnx), np.nan)), axis=1)
+                spaceAllocated = True
+        
+        newField[unfoldedSelectionResult] = newField[foldedSelectionResult]
+        newField[foldedSelectionResult] = np.nan
+        unfoldDone = True
             
         plt.clf()
         newxx, newyy = np.meshgrid(range(newField.shape[1]), range(newField.shape[0]))
-        plt.pcolormesh(newxx, newyy, newField)
+        plt.pcolormesh(newxx, newyy, newField, cmap='pyart_Carbone42')
+        plt.title("Executed Unfold. Press enter to confirm.")
         event.canvas.draw()
         event.canvas.flush_events()
     
@@ -173,16 +219,193 @@ def dealiasOnce(fields):
     
     retFields = []
     for field in fields:
-        isoSelection = np.array(field)
-        isoSelection[~selectionResult] = np.nan
-        fieldNan = np.array(field)
-        fieldNan[selectionResult] = np.nan
-        
         if unfoldDirection == 'left':
-            newField = np.concatenate((isoSelection, fieldNan), axis=1)
-        elif unfoldDirection == 'left':
-            newField = np.concatenate((fieldNan, isoSelection), axis=1)
+            if not spaceAllocated:
+                newField = np.array(field)
+            else:
+                newField = np.concatenate((np.full((ny, dnx), np.nan), field), axis=1)
             
+        elif unfoldDirection == 'right':
+            if not spaceAllocated:
+                newField = np.array(field)
+            else:
+                newField = np.concatenate((field, np.full((ny, dnx), np.nan)), axis=1)
+            
+        newField[unfoldedSelectionResult] = newField[foldedSelectionResult]
+        newField[foldedSelectionResult] = np.nan
+        
         retFields.append(newField)
         
-    return retFields, unfoldsAdded
+    return retFields, currentUnfoldCount, path, unfoldDirection
+
+def iSpectrumDealias(fields, nyquist):
+    if matplotlib.get_backend() != 'TkAgg':
+        raise RuntimeError("Cannot run interactive display with current backend. "
+                            "Switch to Tkagg with 'matplotlib.use(backend=\"TkAgg\")' "
+                            "or if using jupyter, '%matplotlib tk.'")
+    
+    currentUnfoldCount = np.array([0,0])
+    currentFields = fields
+    paths = []
+    directions = []
+    xbounds = []
+    
+    while True:
+        #menu to decide to unfold or bound x axis
+        field = currentFields[0]
+        ny, nx = field.shape
+        
+        xx, yy = np.meshgrid(range(nx), range(ny))
+        
+        fig = plt.figure(figsize=[8, 6])
+        plt.pcolormesh(xx, yy, field, cmap='pyart_Carbone42')
+        plt.xlim([-0.1*nx, nx+0.1*nx])
+        plt.ylim([-0.1*ny, ny+0.1*ny])
+        plt.title("Select 'u' to unfold, or 'b' to set x-axis bounds.")
+        
+        selectionDone = False
+        def handleUnfoldOrBound(event):
+            nonlocal selectionDone
+            
+            if not (event.key in ['b', 'u']):
+                return
+            
+            if event.key == 'b':
+                plt.title("Double click to set bounds")
+                event.canvas.draw()
+                event.canvas.flush_events()
+                selectionDone = True
+                fig.canvas.mpl_disconnect(handleUnfoldOrBoundConnection)
+            if event.key == 'u':
+                plt.close()
+        
+        handleUnfoldOrBoundConnection = fig.canvas.mpl_connect('key_press_event', handleUnfoldOrBound)
+        
+        
+        def executeBound(event):
+            nonlocal xbounds
+            nonlocal selectionDone
+            
+            if not event.dblclick or event.button != LEFT:
+                return
+            if not selectionDone:
+                return
+            
+            x = round(event.xdata)
+            x = bound(x, nx-1, 0)
+            
+            xbounds.append(x)
+            event.inaxes.axvline(x=x, color='r')
+            event.canvas.draw()
+            event.canvas.flush_events()
+            
+            if len(xbounds) == 2:
+                time.sleep(1)
+                plt.close()
+                xbounds.sort()
+        
+        fig.canvas.mpl_connect('button_press_event', executeBound)
+        
+        plt.show(block=True)
+        
+        if selectionDone:
+            break
+        
+        currentFields, currentUnfoldCount, path, direction = dealiasOnce(currentFields, currentUnfoldCount)
+        paths.append(path)
+        directions.append(direction)
+    
+    field = currentFields[0]
+    ny, nx = field.shape
+    xbounds[1] += 1
+    
+    xAxis = np.linspace(-nyquist-(2*currentUnfoldCount[0]*nyquist), nyquist+(2*currentUnfoldCount[1]*nyquist), nx)
+    
+    for i in range(len(currentFields)):
+        currentFields[i] = currentFields[i][:,xbounds[0]:xbounds[1]]
+    xAxis = xAxis[xbounds[0]:xbounds[1]]
+
+    unfoldSaveData = {
+        "unfoldData": [{"path": paths[i], "direction": directions[i]} for i in range(len(paths))],
+        "xbounds": xbounds
+    }
+    
+    return currentFields, xAxis, unfoldSaveData
+
+def savedSpectrumDealias(fields, nyquist, unfoldSaveData):
+    currentFields = np.array(fields)
+    unfolds = unfoldSaveData["unfoldData"]
+    xbounds = unfoldSaveData["xbounds"]
+    currentUnfolds = np.array([0,0])
+
+    for unfold in unfolds:
+        ny, nx = currentFields[0].shape
+
+        dnx = nx // (currentUnfolds[0] + currentUnfolds[1] + 1)
+        xx, yy = np.meshgrid(range(nx), range(ny))
+
+        selectionResult = np.array([])
+
+        path = unfold["path"]
+        allpoints = np.array([xx,yy]).transpose(1,2,0).reshape(-1,2)
+        selectionResultPos = path.contains_points(allpoints, radius=1)
+        selectionResultNeg = path.contains_points(allpoints, radius=-1)
+        if np.sum(selectionResultPos) > np.sum(selectionResultNeg):
+            selectionResult = selectionResultPos
+        else:
+            selectionResult = selectionResultNeg
+        selectionResult = selectionResult.reshape(ny,nx)
+
+        direction = unfold["direction"]
+        if direction == 'left':
+            currentUnfolds += np.array([1,0])
+            unfoldedSelectionResult = np.concatenate((selectionResult, np.full((ny, dnx), False, dtype=bool)), axis=1)
+            foldedSelectionResult = np.concatenate((np.full((ny, dnx), False, dtype=bool), selectionResult), axis=1)
+            
+            if np.all(~unfoldedSelectionResult[:,0:dnx]):
+                unfoldedSelectionResult = unfoldedSelectionResult[:, dnx:]
+                foldedSelectionResult = foldedSelectionResult[:,dnx:]
+            else:
+                spaceAllocated = True
+            
+        elif direction == 'right':
+            currentUnfolds += np.array([0,1])
+            unfoldedSelectionResult = np.concatenate((np.full((ny, dnx), False, dtype=bool), selectionResult), axis=1)
+            foldedSelectionResult = np.concatenate((selectionResult, np.full((ny, dnx), False, dtype=bool)), axis=1)
+            
+            if np.all(~unfoldedSelectionResult[:, -dnx:]):
+                unfoldedSelectionResult = unfoldedSelectionResult[:, 0:dnx]
+                foldedSelectionResult = foldedSelectionResult[:, 0:dnx]
+            else:
+                spaceAllocated = True
+
+        newFields = []
+        for field in currentFields:
+            if direction == 'left':
+                if not spaceAllocated:
+                    newField = np.array(field)
+                else:
+                    newField = np.concatenate((np.full((ny, dnx), np.nan), field), axis=1)
+                
+            elif direction == 'right':
+                if not spaceAllocated:
+                    newField = np.array(field)
+                else:
+                    newField = np.concatenate((field, np.full((ny, dnx), np.nan)), axis=1)
+                
+            newField[unfoldedSelectionResult] = newField[foldedSelectionResult]
+            newField[foldedSelectionResult] = np.nan
+            
+            newFields.append(newField)
+
+        currentFields = list(np.array(newFields))
+
+    ny, nx = currentFields[0].shape
+        
+    xAxis = np.linspace(-nyquist-(2*currentUnfolds[0]*nyquist), nyquist+(2*currentUnfolds[1]*nyquist), nx)
+
+    for i in range(len(currentFields)):
+        currentFields[i] = currentFields[i][:,xbounds[0]:xbounds[1]]
+    xAxis = xAxis[xbounds[0]:xbounds[1]]
+
+    return currentFields, xAxis

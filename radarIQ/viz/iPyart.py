@@ -237,6 +237,9 @@ class iPyart:
             plt.scatter(plt_x, plt_y, color=plt_color)
         elif plt_type == 'plot':
             plt.plot(plt_x, plt_y, color=plt_color)
+            
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
 
         if not replotting:
             self.customPlots.append(arguments)
