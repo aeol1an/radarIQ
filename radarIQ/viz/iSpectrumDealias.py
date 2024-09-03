@@ -363,6 +363,7 @@ def savedSpectrumDealias(fields, nyquist, unfoldSaveData):
             foldedSelectionResult = np.concatenate((np.full((ny, dnx), False, dtype=bool), selectionResult), axis=1)
             
             if np.all(~unfoldedSelectionResult[:,0:dnx]):
+                spaceAllocated = False
                 unfoldedSelectionResult = unfoldedSelectionResult[:, dnx:]
                 foldedSelectionResult = foldedSelectionResult[:,dnx:]
             else:
@@ -374,6 +375,7 @@ def savedSpectrumDealias(fields, nyquist, unfoldSaveData):
             foldedSelectionResult = np.concatenate((selectionResult, np.full((ny, dnx), False, dtype=bool)), axis=1)
             
             if np.all(~unfoldedSelectionResult[:, -dnx:]):
+                spaceAllocated = False
                 unfoldedSelectionResult = unfoldedSelectionResult[:, 0:dnx]
                 foldedSelectionResult = foldedSelectionResult[:, 0:dnx]
             else:

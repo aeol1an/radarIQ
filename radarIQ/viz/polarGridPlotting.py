@@ -6,9 +6,9 @@ def rangeRings(ax = None, rint = 3, maxR = 30, xlims = (-30, 30), ylims = (-30, 
     if ax is None:
         ax = plt.gca()
 
-    rings = np.arange(rint,maxR,rint)
+    rings = np.arange(rint,maxR+rint,rint)
 
-    xx, yy = np.meshgrid(np.linspace(-maxR, maxR, n), np.linspace(-maxR, maxR, n))
+    xx, yy = np.meshgrid(np.linspace(-maxR-rint, maxR+rint, n), np.linspace(-maxR-rint, maxR+rint, n))
 
     mask = (xx >= xlims[0]) & (xx <= xlims[1]) & (yy >= ylims[0]) & (yy <= ylims[1])
 
@@ -30,7 +30,7 @@ def azimuthSpiderweb(ax = None, azint = 5, maxR = 30, xlims = (-30, 30), ylims =
     azSpiderweb = np.arange(0, 360, azint)
     maxAz = azSpiderweb[-1]
 
-    xx, yy = np.meshgrid(np.linspace(-maxR, maxR, n), np.linspace(-maxR, maxR, n))
+    xx, yy = np.meshgrid(np.linspace(-maxR-2, maxR+2, n), np.linspace(-maxR-2, maxR+2, n))
 
     mask = (xx >= xlims[0]) & (xx <= xlims[1]) & (yy >= ylims[0]) & (yy <= ylims[1])
 

@@ -76,11 +76,11 @@ def bootstrapDPSD(V, w, N0, NFT, B, K, N):
         S['V'][i,:] = np.mean((np.power(np.abs(z['V']), 2)) / (M * alpha), axis=0)
         S['X'][i,:] = np.mean((z['H'] * np.conjugate(z['V'])) / (M * alpha), axis=0)
 
-    tsh = np.full((N, M), np.nan)
-    tsv = np.full((N, M), np.nan)
-    tsx = np.full((N, M), np.nan + np.nan * 1j)
-    td = np.full((N, M), np.nan)
-    tr = np.full((N, M), np.nan)
+    tsh = np.full((N, NFT), np.nan)
+    tsv = np.full((N, NFT), np.nan)
+    tsx = np.full((N, NFT), np.nan + np.nan * 1j)
+    td = np.full((N, NFT), np.nan)
+    tr = np.full((N, NFT), np.nan)
 
     for i in range(N):
         iK = np.arange(0, K+1, 1) + (i-1)*K

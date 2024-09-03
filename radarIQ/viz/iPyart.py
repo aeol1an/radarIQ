@@ -79,8 +79,12 @@ class iPyart:
             return
         
         if event.key == 'left':
+            if self.curFileNum == 0:
+                return
             self._replotDiffScan(-1)
         elif event.key == 'right':
+            if self.curFileNum == (self.maxFiles - 1):
+                return
             self._replotDiffScan(1)
         
         self._replotAllCustomPlots()
