@@ -52,7 +52,7 @@ class iPyart:
             raise RuntimeError("Cannot run interactive display with current backend. "
                                "Switch to Tkagg with 'matplotlib.use(backend=\"TkAgg\")' "
                                "or if using jupyter, '%matplotlib tk.'")
-        self.files = list(Path(cfradDir).iterdir())
+        self.files = sorted(Path(cfradDir).iterdir(), key=lambda x: x.name)
         self.maxFiles = len(self.files)
         self.curFileNum = startFilenum
         self.curFileName = self.files[self.curFileNum].name
@@ -260,7 +260,15 @@ class iPyart:
     def getCurrentField(self):
         return self.currentField
     
-    def freezeField(self):
+    def freezeField(self, fieldName: str = None):
+        if not (fieldName is None):
+            validFields = ['DBV', 'VEL', 'ZDR', 'RHOHV']
+            if not (fieldName in validFields):
+                raise ValueError(f"Valid fields are {str(validFields)}. Instead got {fieldName}")
+            self._replotSameScan(fieldName)
+            self._replotAllCustomPlots()
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
         self.singleFieldMode = True
 
     def unfreezeField(self):
@@ -279,3 +287,12 @@ class iPyart:
 
     def getFileNum(self):
         return self.curFileNum
+    
+    def getFileName(self):
+        return str(self.curFileName)
+    
+    def getFilePath(self):
+        return str(self.files[self.curFileNum])
+    
+    def updateFromDisk(self):
+        self.currentRadarObj = pyart.io.read(self.files[self.curFileNum])
