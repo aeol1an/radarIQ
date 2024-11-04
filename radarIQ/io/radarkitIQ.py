@@ -2,7 +2,7 @@ import numpy as np
 import struct
 
 class rkcfile:
-    def __init__(self, filename, maxPulse = None):
+    def __init__(self, filename, maxPulse = None, posFilename = None):
         
         #------Class Properties---------------------------------------------------------------------
         self.constants = {
@@ -147,6 +147,16 @@ class rkcfile:
         self.header['desc']['dataPath'] = ''\
             .join(chr(num) for num in self.header['desc']['dataPath_raw'])\
             .replace('\x00', ' ').strip()
+        
+        if not (posFilename is None):
+            posOverrideFields = ["latitude", "longitude", "heading"]
+            with open(posFilename, "r") as posFile:
+                for posField in posOverrideFields:
+                    line = posFile.readline()
+                    if not line:
+                        break
+                    val = float(line.strip())
+                    self.header['desc'][posField] = val
         #-------------------------------------------------------------------------------------------
         
         

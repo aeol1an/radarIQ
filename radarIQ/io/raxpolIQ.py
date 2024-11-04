@@ -117,7 +117,12 @@ class raxpolrkc(rkcfile):
         self.casePath = root/"cases"/caseName
         self.dataFiltered = False
         
-        super().__init__(root/dir/files[fileNo], maxPulse)
+        if (self.casePath/"correctedLatLonHead.txt").exists():
+            posFilename = self.casePath/"correctedLatLonHead.txt"
+        else:
+            posFilename = None
+        
+        super().__init__(root/dir/files[fileNo], maxPulse, posFilename)
 
     def getExistingCfrad(self, azimuthBeamWidthDeg: float = 1, beamOverlapDeg: float = 0):
         if not self.dataFiltered:
