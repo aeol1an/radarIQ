@@ -25,7 +25,7 @@ class cmaps:
         colors = [x[1] for x in cmap_data]
 
         cmap = LinearSegmentedColormap.from_list("custom_cmap", list(zip(positions, colors)), N=n)
-        cmap.set_bad('#FFFFFF')
+        cmap.set_bad('#FFFFFF', alpha=0)
 
         return cmap
 
@@ -53,6 +53,6 @@ class cmaps:
         colors = [x[1] for x in cmap_data]
 
         cmap = LinearSegmentedColormap.from_list("custom_cmap", list(zip(positions, colors)), N=n)
-        cmap.set_bad('#FFFFFF')
+        cmap.set_bad('#FFFFFF', alpha=0)
 
         return cmap

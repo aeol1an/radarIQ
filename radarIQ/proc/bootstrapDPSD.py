@@ -83,7 +83,7 @@ def bootstrapDPSD(V, w, N0, NFT, B, K, N):
     tr = np.full((N, NFT), np.nan)
 
     for i in range(N):
-        iK = np.arange(0, K+1, 1) + (i-1)*K
+        iK = np.arange(0, K, 1) + (i)*K
         
         tsh[i,:] = np.mean(S['H'][iK,:], axis=0)
         tsv[i,:] = np.mean(S['V'][iK,:], axis=0)

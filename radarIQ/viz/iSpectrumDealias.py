@@ -333,7 +333,7 @@ def iSpectrumDealias(fields, nyquist):
     return currentFields, xAxis, unfoldSaveData
 
 def savedSpectrumDealias(fields, nyquist, unfoldSaveData):
-    currentFields = np.array(fields)
+    currentFields = fields
     unfolds = unfoldSaveData["unfoldData"]
     xbounds = unfoldSaveData["xbounds"]
     currentUnfolds = np.array([0,0])
